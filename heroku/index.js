@@ -84,17 +84,17 @@ app.post('/facebook', async (req, res) => {
 });
 
 app.get('/hello-world', async function(req, res) {
-  const phoneNumber = '790222683';
+  const phoneNumber = '48790222683';
   const messageContent = 'hello world';
   const accessToken = process.env.FACEBOOK_APP_ACCESS_TOKEN; // Ensure this token has permissions to send WhatsApp messages
-
+  const data = {
+      'messaging_product': 'whatsapp',
+      'to': phoneNumber,
+      'text': {'body': messageContent}
+  }
+  
   try {
-    const response = await axios.post(`https://graph.facebook.com/v20.0/398681919986082/messages`, {
-      messaging_product: 'whatsapp',
-      to: phoneNumber,
-      type: 'text',
-      text: { body: messageContent }
-    }, {
+    const response = await axios.post(`https://graph.facebook.com/v20.0/398681919986082/messages`, data, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
