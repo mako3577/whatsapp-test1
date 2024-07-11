@@ -6,10 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-var bodyParser = require('body-parser');
-var express = require('express');
-var app = express();
-var xhub = require('express-x-hub');
+const bodyParser = require('body-parser');
+const express = require('express');
+const xhub = require('express-x-hub');
+const axios = require('axios');
+require('dotenv').config();
+
+const app = express();
 
 app.set('port', (process.env.PORT || 5000));
 app.listen(app.get('port'));
@@ -17,15 +20,15 @@ app.listen(app.get('port'));
 app.use(xhub({ algorithm: 'sha1', secret: process.env.APP_SECRET }));
 app.use(bodyParser.json());
 
-var token = process.env.TOKEN || 'token';
-var received_updates = [];
+const token = process.env.TOKEN || 'token';
+const received_updates = [];
 
 app.get('/', function(req, res) {
   console.log(req);
   res.send('<pre>' + JSON.stringify(received_updates, null, 2) + '</pre>');
 });
 
-app.get(['/facebook', '/instagram'], function(req, res) {
+app.get(['/facebook', '/instagram'], (req, res) => {
   if (
     req.query['hub.mode'] == 'subscribe' &&
     req.query['hub.verify_token'] == token
@@ -36,7 +39,7 @@ app.get(['/facebook', '/instagram'], function(req, res) {
   }
 });
 
-app.post('/facebook', function(req, res) {
+app.post('/facebook', async (req, res) => {
   console.log('Facebook request body:', req.body);
 
   if (!req.isXHubValid()) {
@@ -46,17 +49,39 @@ app.post('/facebook', function(req, res) {
   }
 
   console.log('request header X-Hub-Signature validated');
-  // Process the Facebook updates here
   received_updates.unshift(req.body);
-  res.sendStatus(200);
+
+  if (req.body.entry[0].changes[0].value.verb === 'add' && req.body.entry[0].changes[0].value.item === 'status') {
+    res.sendStatus(200);
+    const pageId = req.body.entry[0].id;
+    const postId = req.body.entry[0].changes[0].value.post_id;
+
+    try {
+      const pageResponse = await axios.get(`https://graph.facebook.com/${pageId}?access_token=${process.env.FACEBOOK_APP_ACCESS_TOKEN}`);
+      const pageName = pageResponse.data.name;
+      const messageRoom = (room, message) => {
+        console.log(`Message to ${room}: ${message}`); // Replace with actual room messaging logic
+      };
+      
+      messageRoom(process.env.REAL_TIME_ROOM, `New post on ${pageName} Page: https://www.facebook.com/${postId.split('_')[1]}.`);
+
+      setTimeout(async () => {
+        try {
+          const likesResponse = await axios.get(`https://graph.facebook.com/${postId.split('_')[1]}/likes?summary=true&access_token=${process.env.FACEBOOK_APP_ACCESS_TOKEN}`);
+          const likes = likesResponse.data.summary ? likesResponse.data.summary.total_count : 0;
+          messageRoom(process.env.REAL_TIME_ROOM, `After ${process.env.WAIT_MINUTES} minutes, the Facebook post https://www.facebook.com/${postId.split('_')[1]} has ${likes} likes.`);
+        } catch (err) {
+          console.error('Error fetching likes:', err);
+        }
+      }, process.env.WAIT_MINUTES * 60000);
+
+    } catch (err) {
+      console.error('Error fetching page info:', err);
+    }
+  } else {
+    res.sendStatus(400);
+  }
 });
 
-app.post('/instagram', function(req, res) {
-  console.log('Instagram request body:');
-  console.log(req.body);
-  // Process the Instagram updates here
-  received_updates.unshift(req.body);
-  res.sendStatus(200);
-});
-
-app.listen();
+console.log(process.env.APP_SECRET);
+app.listen()

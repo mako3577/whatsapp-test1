@@ -7,12 +7,14 @@
     "start": "node heroku/index.js"
   },
   "dependencies": {
+    "axios": "^1.7.2",
     "body-parser": "~1.15.0",
+    "dotenv": "^16.4.5",
     "express": "~4.13.3",
     "express-x-hub": "^1.0.4"
   },
   "engines": {
-    "node": "0.12.7"
+    "node": "19.9.0"
   },
   "repository": {
     "type": "git",
