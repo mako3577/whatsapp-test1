@@ -83,5 +83,34 @@ app.post('/facebook', async (req, res) => {
   }
 });
 
+app.get('/hello-world', async function(req, res) {
+  const phoneNumber = '790222683';
+  const messageContent = 'hello world';
+  const accessToken = process.env.FACEBOOK_APP_ACCESS_TOKEN; // Ensure this token has permissions to send WhatsApp messages
+
+  try {
+    const response = await axios.post(`https://graph.facebook.com/v20.0/398681919986082/messages`, {
+      messaging_product: 'whatsapp',
+      to: phoneNumber,
+      type: 'text',
+      text: { body: messageContent }
+    }, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.status === 200) {
+      res.send('Message sent successfully');
+    } else {
+      res.status(response.status).send('Failed to send message');
+    }
+  } catch (err) {
+    console.error('Error sending message:', err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 console.log(process.env.APP_SECRET);
 app.listen()
